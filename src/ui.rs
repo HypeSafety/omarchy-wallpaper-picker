@@ -191,33 +191,9 @@ fn render_wallpaper_cell(frame: &mut Frame, app: &mut App, filtered_pos: usize, 
 
     // Render image
     if inner.width > 0 && inner.height > 1 {
-        // Split into image area (top) and filename area (bottom)
-        let content_area = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
-
-        // Calculate image dimensions assuming ~16:9 aspect ratio for wallpapers
-        // Terminal cells are roughly 2:1 (height:width in pixels), so 16:9 becomes ~8:9 in cells
-        let aspect_ratio = 16.0 / 9.0 / 2.0; // Adjusted for terminal cell aspect
-        let max_width = content_area.width as f32;
-        let max_height = content_area.height as f32;
-
-        let (img_width, img_height) = if max_width / max_height > aspect_ratio {
-            // Height limited
-            ((max_height * aspect_ratio) as u16, max_height as u16)
-        } else {
-            // Width limited
-            (max_width as u16, (max_width / aspect_ratio) as u16)
-        };
-
-        // Center the image within content_area
-        let x_offset = (content_area.width.saturating_sub(img_width)) / 2;
-        let y_offset = (content_area.height.saturating_sub(img_height)) / 2;
-
-        let image_area = Rect::new(
-            content_area.x + x_offset,
-            content_area.y + y_offset,
-            img_width,
-            img_height,
-        );
+        // Use full area minus bottom row for filename
+        // Resize::Fit will scale the thumbnail up and center it
+        let image_area = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
 
         // Create protocol if not cached, or use cached
         if !app.image_states.contains_key(&original_index) {

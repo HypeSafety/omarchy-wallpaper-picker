@@ -34,7 +34,7 @@ impl Wallpaper {
 
         // Fallback: load original and resize
         if let Ok(img) = image::open(&self.path) {
-            let thumb = img.thumbnail(512, 512);
+            let thumb = img.thumbnail(256, 256);
             self.thumbnail = Some(thumb);
         }
     }
