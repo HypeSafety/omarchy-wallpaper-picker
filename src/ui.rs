@@ -195,21 +195,24 @@ fn render_wallpaper_cell(frame: &mut Frame, app: &mut App, filtered_pos: usize, 
         // Resize::Fit will scale the thumbnail up and center it
         let image_area = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
 
-        // Create protocol if not cached, or use cached
-        if !app.image_states.contains_key(&original_index) {
-            // Load thumbnail lazily if missing
+        // Check if we have a cached protocol for this size
+        if let Some(state) = app.encoder.get_cached(original_index, image_area.width, image_area.height) {
+            // Render cached image
+            let image = StatefulImage::new(None).resize(Resize::Fit(None));
+            frame.render_stateful_widget(image, image_area, state);
+        } else {
+            // Request encoding in background (non-blocking)
             if app.wallpapers[original_index].thumbnail.is_none() {
                 app.wallpapers[original_index].load_thumbnail();
             }
             if let Some(ref thumb) = app.wallpapers[original_index].thumbnail {
-                let protocol = app.picker.new_resize_protocol(thumb.clone());
-                app.image_states.insert(original_index, protocol);
+                app.encoder.request_encode(
+                    original_index,
+                    thumb.clone(),
+                    image_area.width,
+                    image_area.height,
+                );
             }
-        }
-
-        if let Some(state) = app.image_states.get_mut(&original_index) {
-            let image = StatefulImage::new(None).resize(Resize::Fit(None));
-            frame.render_stateful_widget(image, image_area, state);
         }
 
         // Render filename below image

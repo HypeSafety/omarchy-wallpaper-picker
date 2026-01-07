@@ -1,8 +1,8 @@
+use crate::encoder::ImageEncoder;
 use crate::wallpaper::{self, Wallpaper};
 use color_eyre::Result;
 use ratatui_image::picker::Picker;
 use ratatui_image::protocol::StatefulProtocol;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub enum Mode {
@@ -22,7 +22,7 @@ pub struct App {
     pub should_quit: bool,
     pub current_wallpaper: Option<PathBuf>,
     pub picker: Picker,
-    pub image_states: HashMap<usize, StatefulProtocol>,
+    pub encoder: ImageEncoder,
     pub preview_state: Option<StatefulProtocol>,
     pub search_query: String,
     pub command_query: String,
@@ -37,6 +37,7 @@ impl App {
         let wallpapers = wallpaper::discover_wallpapers(None)?;
         let current_wallpaper = wallpaper::get_current_wallpaper();
         let picker = Picker::from_query_stdio()?;
+        let encoder = ImageEncoder::new(picker.clone());
 
         // All indices visible initially
         let filtered_indices: Vec<usize> = (0..wallpapers.len()).collect();
@@ -60,7 +61,7 @@ impl App {
             should_quit: false,
             current_wallpaper,
             picker,
-            image_states: HashMap::new(),
+            encoder,
             preview_state: None,
             search_query: String::new(),
             command_query: String::new(),
@@ -286,7 +287,7 @@ impl App {
 
     pub fn reload_wallpapers(&mut self) -> Result<()> {
         self.wallpapers = wallpaper::discover_wallpapers(self.current_view_dir.clone())?;
-        self.image_states.clear();
+        self.encoder.clear_cache();
         self.preview_state = None;
         self.update_filter();
         self.selected = 0;

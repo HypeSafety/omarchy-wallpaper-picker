@@ -1,4 +1,5 @@
 mod app;
+mod encoder;
 mod ui;
 mod wallpaper;
 
@@ -65,6 +66,16 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let frame_duration = Duration::from_millis(16); // ~60fps max
 
     loop {
+        // Poll for completed image encodings
+        let had_new_images = {
+            let before = app.encoder.cache_len();
+            app.encoder.poll_results();
+            app.encoder.cache_len() > before
+        };
+        if had_new_images {
+            needs_redraw = true;
+        }
+
         // Only redraw if needed and enough time has passed
         if needs_redraw && last_draw.elapsed() >= frame_duration {
             terminal.draw(|frame| ui::render(frame, &mut app))?;
