@@ -1,6 +1,6 @@
 use crate::app::{App, Mode};
 use ratatui::{
-    layout::{Alignment, Constraint, Flex, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
@@ -194,14 +194,30 @@ fn render_wallpaper_cell(frame: &mut Frame, app: &mut App, filtered_pos: usize, 
         // Split into image area (top) and filename area (bottom)
         let content_area = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
 
-        // Center the image within the content area
-        let image_area = Layout::horizontal([Constraint::Percentage(100)])
-            .flex(Flex::Center)
-            .split(
-                Layout::vertical([Constraint::Percentage(100)])
-                    .flex(Flex::Center)
-                    .split(content_area)[0],
-            )[0];
+        // Calculate image dimensions assuming ~16:9 aspect ratio for wallpapers
+        // Terminal cells are roughly 2:1 (height:width in pixels), so 16:9 becomes ~8:9 in cells
+        let aspect_ratio = 16.0 / 9.0 / 2.0; // Adjusted for terminal cell aspect
+        let max_width = content_area.width as f32;
+        let max_height = content_area.height as f32;
+
+        let (img_width, img_height) = if max_width / max_height > aspect_ratio {
+            // Height limited
+            ((max_height * aspect_ratio) as u16, max_height as u16)
+        } else {
+            // Width limited
+            (max_width as u16, (max_width / aspect_ratio) as u16)
+        };
+
+        // Center the image within content_area
+        let x_offset = (content_area.width.saturating_sub(img_width)) / 2;
+        let y_offset = (content_area.height.saturating_sub(img_height)) / 2;
+
+        let image_area = Rect::new(
+            content_area.x + x_offset,
+            content_area.y + y_offset,
+            img_width,
+            img_height,
+        );
 
         // Create protocol if not cached, or use cached
         if !app.image_states.contains_key(&original_index) {
@@ -268,7 +284,7 @@ fn render_preview_modal(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn render_help_modal(frame: &mut Frame, area: Rect) {
-    let modal_area = centered_rect(50, 60, area);
+    let modal_area = centered_rect(50, 75, area);
 
     frame.render_widget(Clear, modal_area);
 
@@ -320,7 +336,7 @@ fn render_help_modal(frame: &mut Frame, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled("  :      ", Style::default().fg(Color::Cyan)),
-            Span::raw("Command (:cd <path>)"),
+            Span::raw("Open command mode"),
         ]),
         Line::from(vec![
             Span::styled("  H      ", Style::default().fg(Color::Cyan)),
@@ -337,6 +353,19 @@ fn render_help_modal(frame: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("  q      ", Style::default().fg(Color::Cyan)),
             Span::raw("Quit"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Commands", Style::default().add_modifier(Modifier::BOLD).fg(Color::Yellow)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  :cd <path>  ", Style::default().fg(Color::Cyan)),
+            Span::raw("Browse wallpapers in directory"),
+        ]),
+        Line::from(vec![
+            Span::styled("  :cd         ", Style::default().fg(Color::Cyan)),
+            Span::raw("Reset to default directory"),
         ]),
     ];
 
